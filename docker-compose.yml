@@ -1,0 +1,7 @@
+services:
+  planificador-acm:
+    build: .
+    container_name: planificador-acm
+    restart: unless-stopped
+    ports:
+      - "8088:80"
