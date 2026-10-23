@@ -4,7 +4,10 @@ Atualizado em 23/10/2026.
 
 ## Estado atual
 - Produção existente: planificador ACM/metalon estático em Docker/Nginx no NAS, porta 8088. Código principal em `outputs/planificador-bandejas-acm.html`.
-- Novo módulo `outputs/led.html` preparado em branch de funcionalidade; instalação no NAS pendente. Acesso remoto disponível está offline.
+- Módulo LED instalado e operacional em `http://192.168.1.43:8088/led.html`. PR #1 integrado ao main; versão funcional `190645f2`.
+- Fonte no NAS sincronizada em `/share/CACHEDEV1_DATA/docker/planificador-bandejas-acm`. Alteração local anterior do HTML preservada no stash `antes-led-20261023`; conteúdo já incorporado à versão atual.
+- Instalação feita no contêiner existente, sem interromper os demais serviços. Para futuras recriações, usar `git pull` e `docker compose up -d --build` nessa pasta; não recriar a partir da imagem antiga de setembro.
+- Auxiliar `planificador-led-manutencao` usado só para sincronizar a pasta do projeto; manter parado após o trabalho.
 - Navegação ACM/Metalon ↔ Letreiros LED. Dockerfile passa a copiar os arquivos auxiliares de `outputs/`.
 
 ## Letreiros LED
@@ -18,7 +21,8 @@ Atualizado em 23/10/2026.
 ## Validação
 - `node tests/led.test.js`: central, borda/vazados, preenchimento, orientação, margens, folgas independentes e colisões.
 - SVG real da Milimili: 12 elementos reconhecidos nos 3 modos; verificadas margens/vãos e renderizações dos SVGs. Harness de DOM simulado verificou importação, cálculo, metragem e bloqueio de resultado desatualizado.
-- Conferência completa em navegador real pendente: Chromium indisponível e download bloqueado no ambiente atual.
+- Chrome conectado ao NAS: exemplo central 42 módulos, borda 90, preenchimento 96 e fita 8,45 m/169 trechos. Sem erros no console. Aba ACM preenchida pelo usuário preservada.
+- Confirmação dos arquivos baixados nas exportações ainda pendente; acionamento do PNG não apresentou erro na aplicação.
 
 ## Decisões e limites
 - GitHub é a fonte de verdade; ler AGENTS.md e este arquivo antes de alterar.
@@ -26,4 +30,4 @@ Atualizado em 23/10/2026.
 - Fita representada por trechos retos no intervalo de corte; emendas/conectores fora da metragem. Importação não aceita imagens, clones ou textos editáveis.
 
 ## Próximo passo
-- Revisar/testar a tela no navegador real e instalar a branch aprovada no NAS. Não declarar implantação concluída antes disso.
+- Uso operacional; conferir importação e arquivos exportados no navegador com os próximos projetos reais. Manter mudanças e estado no GitHub.
