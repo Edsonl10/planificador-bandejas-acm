@@ -58,7 +58,7 @@
 </style>
 </head>
 <body>
-<header class="top"><h1>Planificador de Bandejas ACM</h1><p>Ficha de produção · medidas em centímetros · módulos, quadro e aproveitamento de chapa</p><button class="print-top no-print" onclick="window.print()">Imprimir / PDF</button></header>
+<header class="top"><nav class="no-print" style="display:flex;gap:8px;margin-bottom:12px"><a href="./" style="color:white;font-weight:700;padding:6px 10px;background:#ffffff20;border-radius:6px;text-decoration:none" aria-current="page">ACM / Metalon</a><a href="led.html" style="color:#102a43;font-weight:700;padding:6px 10px;background:white;border-radius:6px;text-decoration:none">Letreiros LED</a></nav><h1>Planificador de Bandejas ACM</h1><p>Ficha de produção · medidas em centímetros · módulos, quadro e aproveitamento de chapa</p><button class="print-top no-print" onclick="window.print()">Imprimir / PDF</button></header>
 <main class="layout">
 <aside class="panel no-print">
 <h2>Projeto</h2>
@@ -194,3 +194,4 @@ const baseRender=render;render=()=>{baseRender();let chosen=preferredSheet(flang
 ['calculate','repage','sheet','pagination','flange','rear','project'].forEach(id=>{let element=$('#'+id),event=id==='calculate'||id==='repage'?'onclick':id==='sheet'||id==='pagination'?'onchange':'oninput';element[event]=render});
 render();
 </script></body></html>
+
