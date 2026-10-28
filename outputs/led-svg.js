@@ -25,6 +25,33 @@ function stylesheet(text){
  while((match=rules.exec(css))){const body=declarations(match[2]);if(!body)continue;const selectors=match[1].split(',').map(x=>x.trim()).filter(x=>x&&selector.test(x));if(selectors.length)result.push(selectors.map(x=>`#${ART_ID} ${x}`).join(',')+'{'+body+'}');}
  return result.join('\n');
 }
+function closedShape(node){
+ if(['rect','circle','ellipse','polygon'].includes(node.localName))return true;
+ if(node.localName!=='path')return false;
+ const commands=(node.getAttribute('d')||'').match(/[MmZz]/g)||[];let open=false,closed=0;
+ for(const command of commands){if(command==='M'||command==='m'){if(open)return false;open=true;}else{if(!open)return false;open=false;closed++;}}
+ return closed>0&&!open;
+}
+let inspectionId=0;
+function fillOutlinedShapes(svg){
+ // Corel pode exportar letras como contornos fechados sem preenchimento.
+ // Só interpreta esses contornos como áreas quando não há outra forma preenchida visível.
+ const holder=document.createElement('div'),styles=Array.from(svg.querySelectorAll('style'));
+ const oldId=svg.getAttribute('id'),originalStyles=styles.map(s=>s.textContent),id=ART_ID+'-check-'+(++inspectionId);
+ holder.style.cssText='position:fixed;left:-10000px;top:-10000px;width:1px;height:1px;opacity:0;pointer-events:none';
+ svg.setAttribute('id',id);styles.forEach((s,i)=>{s.textContent=originalStyles[i].replaceAll('#'+ART_ID+' ','#'+id+' ');});
+ holder.append(svg);document.body.append(holder);
+ try{
+  const elements=Array.from(svg.querySelectorAll('path,rect,circle,ellipse,polygon,polyline,line')).filter(e=>!e.closest('defs,clipPath'));
+  function visible(e){for(let node=e;node&&node!==holder;node=node.parentElement){const s=getComputedStyle(node);if(s.display==='none'||s.visibility==='hidden'||s.visibility==='collapse'||Number(s.opacity)===0)return false;}return true;}
+  const info=elements.filter(visible).map(node=>({node,style:getComputedStyle(node)}));
+  const filled=info.some(({style})=>style.fill!=='none'&&Number(style.fillOpacity)!==0);
+  if(filled)return 0;
+  const outlines=info.filter(({node,style})=>closedShape(node)&&style.stroke!=='none'&&Number(style.strokeOpacity)!==0&&parseFloat(style.strokeWidth)>0);
+  for(const {node} of outlines){const old=node.getAttribute('style')||'';node.setAttribute('style',old+(old&&!old.endsWith(';')?';':'')+'fill:#263540;fill-opacity:1');}
+  return outlines.length;
+ }finally{svg.remove();holder.remove();svg.setAttribute('id',oldId);styles.forEach((s,i)=>{s.textContent=originalStyles[i];});}
+}
 function sanitizeDocument(doc){
  const src=doc.documentElement;
  if(doc.querySelector('parsererror')||!src||src.localName!=='svg')throw Error('Arquivo SVG inválido.');
@@ -49,6 +76,6 @@ function sanitizeDocument(doc){
  copy(src,clean);if(!shapes)throw Error('Nenhuma forma vetorial encontrada.');if(shapes>3000)throw Error('Muitas formas no SVG. Simplifique o vetor antes de importar.');
  return{node:clean,ratio,widthMM:mmW||vb[2]*25.4/96};
 }
-function parse(text){if(text.length>4e6)throw Error('O SVG deve ter no máximo 4 MB.');if(/<!ENTITY|<!DOCTYPE[^>]*\[/i.test(text))throw Error('Exporte o SVG sem entidades internas.');text=text.replace(/<!DOCTYPE[^>]*>/gi,'');return sanitizeDocument(new DOMParser().parseFromString(text,'image/svg+xml'));}
-const api={parse,sanitizeDocument,declarations,stylesheet};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LedSvg=api;
+function parse(text){if(text.length>4e6)throw Error('O SVG deve ter no máximo 4 MB.');if(/<!ENTITY|<!DOCTYPE[^>]*\[/i.test(text))throw Error('Exporte o SVG sem entidades internas.');text=text.replace(/<!DOCTYPE[^>]*>/gi,'');const result=sanitizeDocument(new DOMParser().parseFromString(text,'image/svg+xml'));result.outlinesConverted=fillOutlinedShapes(result.node);return result;}
+const api={parse,sanitizeDocument,declarations,stylesheet,closedShape,fillOutlinedShapes};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LedSvg=api;
 })(typeof self!=='undefined'?self:globalThis);
