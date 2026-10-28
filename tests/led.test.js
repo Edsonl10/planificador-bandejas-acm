@@ -17,3 +17,23 @@ const vertical=input('fill');vertical.orientation=90;const vr=E.distribute(verti
 const narrowRows=input('fill');narrowRows.rowGap=2;assert.ok(E.distribute(narrowRows).modules.length>a.modules.length,'row clearance can be less than longitudinal gap');
 const noGap=input();noGap.gap=0;const nr=E.distribute(noGap);noGap.distance=nr.distance;assert.ok(nr.modules.every((m,i)=>E.fits(m,noGap,nr.modules,i)),'zero gap still rejects overlap');
 console.log('PASS: vertical rows, independent row gap and zero-gap strips');
+
+// Alguns SVGs do Corel recortam o viewBox exatamente na borda do desenho.
+const tight={w:160,h:40,sx:1,sy:1,widthMM:160,heightMM:40,length:20,width:4,gap:4,edge:2,rowGap:4,mode:'central',orientation:0};
+tight.mask=new Uint8Array(tight.w*tight.h).fill(1);
+const tightResult=E.distribute(tight);
+assert.ok(tightResult.modules.length>=5,'a shape touching every viewBox edge still gets a central row');
+tight.distance=tightResult.distance;
+assert.ok(tightResult.modules.every((m,i)=>E.fits(m,tight,tightResult.modules,i)),'edge-touching shape still honors clearance');
+console.log('PASS: central distribution when artwork touches the SVG boundaries');
+
+const separate={w:140,h:50,sx:1,sy:1,widthMM:140,heightMM:50,length:30,width:4,gap:4,edge:1,rowGap:4,mode:'central',orientation:0};
+separate.mask=new Uint8Array(separate.w*separate.h);
+for(let y=5;y<45;y++)for(let x=5;x<90;x++)separate.mask[y*separate.w+x]=1;
+for(let y=10;y<24;y++)for(let x=110;x<124;x++)separate.mask[y*separate.w+x]=1;
+const separateResult=E.distribute(separate),left=separateResult.groupMap[20*separate.w+20]-1,right=separateResult.groupMap[15*separate.w+115]-1;
+assert.notEqual(left,right,'each separate shape has its own group even when it has no LEDs');
+assert.ok(separateResult.modules.some(m=>m.group===left));
+assert.equal(separateResult.modules.some(m=>m.group===right),false);
+assert.equal(separateResult.groupMap[0],0,'background is not assigned to a group');
+console.log('PASS: group map identifies letters without automatically placed modules');

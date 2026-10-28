@@ -8,33 +8,15 @@ function isStrip(){return $('ledType').value==='strip';}
 function quantity(){return{length:+$(isStrip()?'cutStep':'length').value*10,width:+$('width').value*10,gap:+$('gap').value*10,edge:+$('edge').value*10,rowGap:+$('rowGap').value*10,mode:$('mode').value,orientation:+$('orientation').value,type:$('ledType').value};}
 function params(){const p=quantity(),widthMM=+$('artWidth').value*10;return{...p,widthMM,heightMM:widthMM/state.ratio};}
 function options(){const p=params(),strip=isStrip();$('cutField').classList.toggle('hidden',!strip);$('lengthField').classList.toggle('hidden',strip);$('rowField').classList.toggle('hidden',p.mode!=='fill');$('orientationField').classList.toggle('hidden',p.mode!=='fill');$('widthCaption').textContent=strip?'Largura da fita (cm)':'Largura do módulo (cm)';$('gapCaption').textContent=strip?'Vão livre entre trechos (cm)':'Vão livre entre módulos (cm)';$('totalLabel').textContent=strip?'metros de fita no layout':'módulos no layout';$('reserveLabel').textContent=strip?'metros de fita com reserva':'quantidade com reserva';$('groupUnit').textContent=strip?'Metros de fita':'Módulos';$('modeHelp').textContent={central:'Uma fileira no meio dos traços, respeitando a distância mínima da borda.',border:'Percorre os contornos externos e os vazados internos com o afastamento informado.',fill:'Fileiras paralelas preenchem o interior da letra, respeitando a margem e os dois espaçamentos.'}[p.mode];$('artHeight').value=Number.isFinite(p.heightMM)?number(p.heightMM/10):'';$('pitch').textContent=`${number(p.length/10)} cm de ${strip?'trecho':'módulo'} + ${number(p.gap/10)} cm livres = ${number((p.length+p.gap)/10)} cm entre centros.`;$('gapLabel').textContent=number(p.gap/10)+' cm livres';}
-function physical(value){const m=String(value||'').trim().match(/^([0-9]*\.?[0-9]+)(mm|cm|in|pt|px|m)?$/i);if(!m)return null;return +m[1]*({mm:1,cm:10,in:25.4,pt:25.4/72,px:25.4/96,m:1000}[m[2]?.toLowerCase()||'px']);}
-function parseSVG(text){
- if(text.length>4e6)throw Error('O SVG deve ter no máximo 4 MB.');
- if(/<!ENTITY|<!DOCTYPE[^>]*\[/i.test(text))throw Error('Exporte o SVG sem entidades internas.');
- text=text.replace(/<!DOCTYPE[^>]*>/gi,'');
- const doc=new DOMParser().parseFromString(text,'image/svg+xml'),src=doc.documentElement;
- if(doc.querySelector('parsererror')||src.localName!=='svg')throw Error('Arquivo SVG inválido.');
- if(doc.querySelector('text'))throw Error('Converta os textos em curvas no Corel e exporte novamente.');
- if(doc.querySelector('use,image,foreignObject'))throw Error('Exporte somente os vetores, sem imagens ou clones vinculados.');
- const box=src.getAttribute('viewBox')?.trim().split(/[ ,]+/).map(Number);let mmW=physical(src.getAttribute('width')),mmH=physical(src.getAttribute('height'));
- const vb=box?.length===4&&box.every(Number.isFinite)&&box[2]>0&&box[3]>0?box:[0,0,mmW?mmW*96/25.4:0,mmH?mmH*96/25.4:0];
- if(!(vb[2]>0&&vb[3]>0))throw Error('O SVG precisa de dimensões ou viewBox.');
- const ratio=mmW&&mmH?mmW/mmH:vb[2]/vb[3];if(!Number.isFinite(ratio)||ratio<.025||ratio>80)throw Error('Proporção do SVG fora do limite.');
- const clean=svgEl('svg',{xmlns:NS,viewBox:vb.join(' '),fill:'#263540','fill-rule':src.getAttribute('fill-rule')||(/fill-rule\s*:\s*(nonzero|evenodd)/i.exec(src.getAttribute('style')||'')?.[1])||'evenodd',preserveAspectRatio:'none'});
- const allowed=new Set(['g','path','rect','circle','ellipse','polygon','polyline','line','svg']);const attrs=['d','x','y','x1','x2','y1','y2','width','height','rx','ry','cx','cy','r','points','transform','fill-rule','clip-rule','viewBox'];let shapes=0;
- function copy(parent,dest){for(const node of parent.children){if(!allowed.has(node.localName))continue;const out=svgEl(node.localName);for(const name of attrs){const value=node.getAttribute(name);if(value&&!/url\s*\(|https?:|javascript:|[<>]/i.test(value))out.setAttribute(name,value);}const rule=/fill-rule\s*:\s*(evenodd|nonzero)/i.exec(node.getAttribute('style')||'');if(rule)out.setAttribute('fill-rule',rule[1]);if(!['g','svg'].includes(node.localName))shapes++;copy(node,out);dest.append(out);}}
- copy(src,clean);if(!shapes)throw Error('Nenhuma forma vetorial encontrada.');if(shapes>3000)throw Error('Muitas formas no SVG. Simplifique o vetor antes de importar.');
- return{node:clean,ratio,widthMM:mmW||vb[2]*25.4/96};
-}
 function setSource(text,name){
  if(state.busy){state.worker?.terminate();state.busy=false;}
- const parsed=parseSVG(text);state.source=parsed.node;state.ratio=parsed.ratio;state.modules=[];state.groups=[];state.ctx=null;state.selected=-1;state.dirty=false;
+ const parsed=LedSvg.parse(text);state.source=parsed.node;state.ratio=parsed.ratio;state.modules=[];state.groups=[];state.ctx=null;state.selected=-1;state.dirty=false;
  $('project').value=name.replace(/\.svg$/i,'');$('artWidth').value=(parsed.widthMM/10).toFixed(2);$('generate').disabled=false;$('generate').textContent='Distribuir módulos';options();paint();summary();msg('SVG importado. Confira a largura real e clique em Distribuir módulos.');
 }
 function markDirty(){options();if(state.ctx){state.dirty=true;state.selected=-1;summary();msg('As medidas mudaram. Distribua novamente para atualizar o layout.');}else if(state.source)paint();}
 function lockControls(lock){for(const id of ['file','example','artWidth','length','width','gap','edge','rowGap','cutStep','mode','orientation','ledType','project'])$(id).disabled=lock;}
-function exportAllowed(){return !!state.ctx&&!state.dirty&&!state.busy;}
+function validReserve(){const value=$('reserve').value;return value.trim()!==''&&Number.isFinite(+value)&&+value>=0&&+value<=100;}
+function exportAllowed(){return !!state.ctx&&!state.dirty&&!state.busy&&validReserve();}
 function summary(){
  const valid=exportAllowed(),strip=state.ctx?.type==='strip',raw=strip?state.modules.length*state.ctx.length/1000:state.modules.length,totalReserve=raw*(1+(+$('reserve').value||0)/100);$('total').textContent=valid?(strip?number(raw)+' m':raw):'—';$('withReserve').textContent=valid?(strip?number(Math.ceil(state.modules.length*(1+(+$('reserve').value||0)/100))*state.ctx.length/1000)+' m':Math.ceil(totalReserve)):'—';$('shapeCount').textContent=valid?state.groups.length:'—';
  document.querySelectorAll('.export').forEach(e=>e.disabled=!valid);
@@ -61,31 +43,34 @@ function makeDrawing(exporting=false){
 }
 function paint(){if(!state.source)return;$('drawingTitle').textContent=$('project').value||'Prévia do letreiro';$('view').replaceChildren(makeDrawing());}
 async function raster(){
- const p=params();if(!(p.widthMM>0&&p.widthMM<=100000&&p.heightMM>0&&p.heightMM<=100000&&p.length>0&&p.width>0&&p.gap>=0&&p.edge>=0&&p.rowGap>=0))throw Error('Confira as medidas: valores positivos e letreiro de até 100 m.');
+ const fields=[['artWidth','largura do desenho',.1,10000],['width',isStrip()?'largura da fita':'largura do módulo',.1,100],['gap','vão livre',0,100],['edge','distância da borda',0,100],isStrip()?['cutStep','intervalo de corte',.5,100]:['length','comprimento do módulo',.1,100]];
+ if($('mode').value==='fill')fields.push(['rowGap','vão entre fileiras',0,100]);
+ for(const [id,label,min,max] of fields){const value=$(id).value;if(value.trim()===''||!Number.isFinite(+value)||+value<min||+value>max)throw Error(`Confira ${label}: informe um valor entre ${number(min)} e ${number(max)} cm.`);}
+ const p=params();if(!(p.widthMM>0&&p.widthMM<=100000&&p.heightMM>0&&p.heightMM<=100000&&p.length>0&&p.width>0&&p.gap>=0&&p.edge>=0&&(p.mode!=='fill'||p.rowGap>=0)))throw Error('Confira as medidas: valores positivos e letreiro de até 100 m.');
  const longest=Math.max(p.widthMM,p.heightMM),factor=Math.min(1600/longest,4/Math.min(p.length,p.width)),w=Math.max(12,Math.ceil(p.widthMM*factor)),h=Math.max(12,Math.ceil(p.heightMM*factor));
  if(w*h>1600*1600)throw Error('Desenho muito grande para esta resolução.');
  const svg=state.source.cloneNode(true);svg.setAttribute('width',w);svg.setAttribute('height',h);const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml'}));
  try{const img=new Image();await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(Error('Não foi possível rasterizar o SVG.'));img.src=url;});const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,w,h);const data=ctx.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);for(let i=0;i<mask.length;i++)mask[i]=data[i*4+3]>127?1:0;if(!mask.some(v=>v))throw Error('O desenho está vazio.');return{...p,mask,w,h,sx:p.widthMM/w,sy:p.heightMM/h};}finally{URL.revokeObjectURL(url);}
 }
 async function generate(){
- if(!state.source||state.busy)return;state.busy=true;lockControls(true);$('generate').disabled=true;$('generate').textContent='Calculando…';summary();msg('Identificando os traços e distribuindo os módulos…');
+ if(!state.source||state.busy)return;if(!validReserve()){msg('Informe uma reserva entre 0 e 100%.',true);summary();return;}state.busy=true;lockControls(true);$('generate').disabled=true;$('generate').textContent='Calculando…';summary();msg('Identificando os traços e distribuindo os módulos…');
  try{
   const ctx=await raster();state.worker?.terminate();const worker=state.worker=new Worker('led-worker.js');
   const result=await new Promise((resolve,reject)=>{worker.onmessage=e=>e.data.error?reject(Error(e.data.error)):resolve(e.data);worker.onerror=()=>reject(Error('Não foi possível calcular. Abra o planificador pelo endereço do NAS.'));worker.postMessage(ctx);});worker.terminate();state.worker=null;
-  ctx.distance=result.distance;state.ctx=ctx;state.modules=result.modules;state.groups=result.groups;state.selected=-1;state.dirty=false;state.busy=false;paint();summary();
+  ctx.distance=result.distance;ctx.groupMap=result.groupMap;state.ctx=ctx;state.modules=result.modules;state.groups=result.groups;state.selected=-1;state.dirty=false;state.busy=false;paint();summary();
   const resultLabel=ctx.type==='strip'?`${number(state.modules.length*ctx.length/1000)} m de fita em ${state.modules.length} trechos`:`${state.modules.length} módulos`;
   msg(result.unplaced?`${resultLabel} distribuídos. ${result.unplaced} elemento(s) sem espaço para este módulo: confira as medidas.`:`${resultLabel} distribuídos. Confira as curvas e os encontros antes de exportar.`);
  }catch(e){state.busy=false;state.worker?.terminate();state.worker=null;msg(e.message,true);summary();}
  finally{lockControls(false);$('generate').disabled=false;$('generate').textContent='Distribuir módulos';}
 }
 function coordinates(event){const root=$('view').querySelector('svg'),p=root.createSVGPoint();p.x=event.clientX;p.y=event.clientY;return p.matrixTransform(root.getScreenCTM().inverse());}
-function currentGroup(x,y){if(!state.ctx)return 0;let best=0,distance=Infinity;for(const m of state.modules){const d=Math.hypot(m.x-x,m.y-y);if(d<distance){distance=d;best=m.group;}}return best;}
+function currentGroup(x,y){const ctx=state.ctx;if(!ctx)return null;if(ctx.groupMap){const ix=Math.floor(x/ctx.sx),iy=Math.floor(y/ctx.sy);if(ix<0||iy<0||ix>=ctx.w||iy>=ctx.h)return null;const id=ctx.groupMap[iy*ctx.w+ix]-1;return id>=0?id:null;}let best=null,distance=Infinity;for(const m of state.modules){const d=Math.hypot(m.x-x,m.y-y);if(d<distance){distance=d;best=m.group;}}return best;}
 function select(i){state.selected=i;if(i>=0)$('rotation').value=Number(state.modules[i].angle.toFixed(1));paint();summary();}
 let drag=null;
 $('view').addEventListener('pointerdown',e=>{if(!exportAllowed())return;const m=e.target.closest('[data-index]');if(!m)return;const i=+m.dataset.index,p=coordinates(e);drag={i,dx:p.x-state.modules[i].x,dy:p.y-state.modules[i].y,old:{...state.modules[i]},pointer:e.pointerId};select(i);$('view').setPointerCapture(e.pointerId);});
-$('view').addEventListener('pointermove',e=>{if(!drag)return;const p=coordinates(e),m={...state.modules[drag.i],x:p.x-drag.dx,y:p.y-drag.dy};if(LedEngine.fits(m,state.ctx,state.modules,drag.i)){state.modules[drag.i]=m;paint();}});
+$('view').addEventListener('pointermove',e=>{if(!drag)return;const p=coordinates(e),m={...state.modules[drag.i],x:p.x-drag.dx,y:p.y-drag.dy},group=currentGroup(m.x,m.y);if(group!==null&&LedEngine.fits(m,state.ctx,state.modules,drag.i)){m.group=group;state.modules[drag.i]=m;paint();}});
 function endDrag(){if(!drag)return;drag=null;summary();} $('view').addEventListener('pointerup',endDrag);$('view').addEventListener('pointercancel',endDrag);
-$('view').addEventListener('dblclick',e=>{if(!exportAllowed()||e.target.closest('[data-index]'))return;const p=coordinates(e),m={x:p.x,y:p.y,angle:0,group:currentGroup(p.x,p.y)};if(LedEngine.fits(m,state.ctx,state.modules)){state.modules.push(m);select(state.modules.length-1);msg('LED adicionado. Ajuste a rotação se necessário.');}else msg('Sem espaço nesta posição para o módulo e o vão configurado.',true);});
+$('view').addEventListener('dblclick',e=>{if(!exportAllowed()||e.target.closest('[data-index]'))return;const p=coordinates(e),group=currentGroup(p.x,p.y),m={x:p.x,y:p.y,angle:0,group};if(group!==null&&LedEngine.fits(m,state.ctx,state.modules)){state.modules.push(m);select(state.modules.length-1);msg('LED adicionado. Ajuste a rotação se necessário.');}else msg('Sem espaço nesta posição para o módulo e o vão configurado.',true);});
 $('delete').onclick=()=>{if(state.selected<0)return;state.modules.splice(state.selected,1);select(-1);};$('clearSelection').onclick=()=>select(-1);
 $('rotation').onchange=()=>{if(state.selected<0)return;const m={...state.modules[state.selected],angle:+$('rotation').value};if(Number.isFinite(m.angle)&&LedEngine.fits(m,state.ctx,state.modules,state.selected)){state.modules[state.selected]=m;paint();}else{msg('A rotação ultrapassa a letra ou reduz o vão livre.',true);$('rotation').value=state.modules[state.selected].angle.toFixed(1);}};
 function save(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
@@ -96,5 +81,5 @@ $('print').onclick=()=>{if(exportAllowed()){select(-1);window.print();}};
 $('file').onchange=async()=>{try{if($('file').files[0])setSource(await $('file').files[0].text(),$('file').files[0].name);}catch(e){msg(e.message,true);}finally{$('file').value='';}};
 $('example').onclick=()=>setSource('<svg xmlns="http://www.w3.org/2000/svg" width="2000mm" height="700mm" viewBox="0 0 2000 700"><path d="M60 40H200V520H600V660H60Z"/><path d="M730 40H1260V180H870V280H1180V420H870V520H1260V660H730Z"/><path fill-rule="evenodd" d="M1390 40H1660C2050 40 2050 660 1660 660H1390ZM1530 180V520H1650C1840 520 1840 180 1650 180Z"/></svg>','Exemplo_LED.svg');
 for(const id of ['artWidth','length','width','gap','edge','rowGap','cutStep'])$(id).oninput=markDirty;
-$('mode').onchange=markDirty;$('orientation').onchange=markDirty;$('ledType').onchange=()=>{$('gap').value=isStrip()?'0':'3';markDirty();};$('reserve').oninput=summary;$('project').oninput=paint;$('generate').onclick=generate;options();
+$('mode').onchange=markDirty;$('orientation').onchange=markDirty;$('ledType').onchange=()=>{$('gap').value=isStrip()?'0':'3';markDirty();};$('reserve').oninput=()=>{summary();if(!validReserve())msg('Informe uma reserva entre 0 e 100%.',true);else if(state.ctx&&!state.dirty)msg('Reserva atualizada.');};$('project').oninput=paint;$('generate').onclick=generate;options();
 })();
