@@ -13,6 +13,7 @@ Atualizado em 28/10/2026.
 - Importação: preserva estilos comuns de vetores do Corel, regra de preenchimento, linhas sem preenchimento e recortes locais; mantém bloqueio de scripts, imagens, textos editáveis e clones.
 - A atribuição de LEDs manuais e movidos usa a forma efetivamente selecionada, inclusive letras sem LEDs automáticos. Reserva inválida, medidas fora dos limites e resultados desatualizados bloqueiam exportação.
 - ACM: abas negativas, dimensões que não comportam o desconto do quadro e quantidades inválidas interrompem o cálculo com mensagem.
+- Scripts do LED e do worker têm versão na URL para evitar que o navegador reutilize o código antigo após atualizar o NAS.
 - As correções estão preparadas no branch `fix/led-svg-validacao-20261028`; ainda não foram instaladas nem verificadas no NAS. A sessão QNAP estava na tela de login e o Desktop Commander estava offline.
 
 ## Validação e limites

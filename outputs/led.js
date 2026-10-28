@@ -55,7 +55,7 @@ async function raster(){
 async function generate(){
  if(!state.source||state.busy)return;if(!validReserve()){msg('Informe uma reserva entre 0 e 100%.',true);summary();return;}state.busy=true;lockControls(true);$('generate').disabled=true;$('generate').textContent='Calculando…';summary();msg('Identificando os traços e distribuindo os módulos…');
  try{
-  const ctx=await raster();state.worker?.terminate();const worker=state.worker=new Worker('led-worker.js');
+  const ctx=await raster();state.worker?.terminate();const worker=state.worker=new Worker('led-worker.js?v=20261028-1');
   const result=await new Promise((resolve,reject)=>{worker.onmessage=e=>e.data.error?reject(Error(e.data.error)):resolve(e.data);worker.onerror=()=>reject(Error('Não foi possível calcular. Abra o planificador pelo endereço do NAS.'));worker.postMessage(ctx);});worker.terminate();state.worker=null;
   ctx.distance=result.distance;ctx.groupMap=result.groupMap;state.ctx=ctx;state.modules=result.modules;state.groups=result.groups;state.selected=-1;state.dirty=false;state.busy=false;paint();summary();
   const resultLabel=ctx.type==='strip'?`${number(state.modules.length*ctx.length/1000)} m de fita em ${state.modules.length} trechos`:`${state.modules.length} módulos`;
