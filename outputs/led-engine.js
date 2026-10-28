@@ -2,13 +2,15 @@
 (function(root){
 'use strict';
 function thin(mask,w,h){
- const s=new Uint8Array(mask),remove=[];let changed=true,rounds=0;
- while(changed&&rounds++<Math.max(w,h)){changed=false;
+ // Trate a área fora do SVG como fundo, inclusive quando uma forma toca a borda.
+ const pw=w+2,ph=h+2,s=new Uint8Array(pw*ph),remove=[];let changed=true,rounds=0;
+ for(let y=0;y<h;y++)s.set(mask.subarray(y*w,(y+1)*w),(y+1)*pw+1);
+ while(changed&&rounds++<Math.max(pw,ph)){changed=false;
   for(let pass=0;pass<2;pass++){
    remove.length=0;
-   for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
-    const i=y*w+x;if(!s[i])continue;
-    const p=[s[i-w],s[i-w+1],s[i+1],s[i+w+1],s[i+w],s[i+w-1],s[i-1],s[i-w-1]];
+   for(let y=1;y<ph-1;y++)for(let x=1;x<pw-1;x++){
+    const i=y*pw+x;if(!s[i])continue;
+    const p=[s[i-pw],s[i-pw+1],s[i+1],s[i+pw+1],s[i+pw],s[i+pw-1],s[i-1],s[i-pw-1]];
     const count=p.reduce((a,b)=>a+b,0);if(count<2||count>6)continue;
     let changes=0;for(let j=0;j<8;j++)if(!p[j]&&p[(j+1)%8])changes++;
     if(changes!==1)continue;
@@ -18,7 +20,9 @@ function thin(mask,w,h){
    if(remove.length)changed=true;for(const i of remove)s[i]=0;
   }
  }
- return s;
+ const result=new Uint8Array(mask.length);
+ for(let y=0;y<h;y++)result.set(s.subarray((y+1)*pw+1,(y+1)*pw+1+w),y*w);
+ return result;
 }
 function components(mask,w,h){
  const labels=new Int32Array(mask.length),queue=new Int32Array(mask.length),groups=[];let next=0;
@@ -101,10 +105,11 @@ function distribute(input){
  // Group detached dots over a stem. Holes stay part of the same connected shape.
  let next=0;for(const g of groups){const stem=groups.find(o=>o!==g&&o.minY>g.maxY&&Math.min(o.maxX,g.maxX)>Math.max(o.minX,g.minX)&&o.maxY-o.minY>(g.maxY-g.minY)*1.6&&o.minY-g.maxY<(g.maxY-g.minY)*2);g.parent=stem||g;}
  for(const g of groups)if(g.parent===g)g.group=next++;
- for(const g of groups)g.group=g.parent.group;
+ for(const g of groups){let parent=g;while(parent.parent!==parent)parent=parent.parent;g.group=parent.group;}
+ const groupMap=new Int32Array(mask.length);for(let i=0;i<mask.length;i++){const label=comp.labels[i],group=label?parts[label-1].group:undefined;groupMap[i]=group===undefined?0:group+1;}
  if(mode==='border'){for(const e of contours(mask,w,h,sx,sy,comp.labels,distance,(input.edge||0)+width/2+Math.max(sx,sy))){const part=parts[e.label-1];part.edges.push(e);}}
  const pitch=length+gap;
- if(mode==='fill'){const angle=input.orientation===90?90:0,stepX=angle?width+(input.rowGap??gap):length+gap,stepY=angle?length+gap:width+(input.rowGap??gap);if(stepX<=0||stepY<=0)throw Error('O espaçamento precisa ser positivo.');let candidates=0;for(let y=(angle?length:width)/2;y<input.heightMM;y+=stepY)for(let x=(angle?width:length)/2;x<input.widthMM;x+=stepX){if(++candidates>200000)throw Error('Módulos muito pequenos para o tamanho do letreiro.');const ix=Math.floor(x/sx),iy=Math.floor(y/sy),label=comp.labels[iy*w+ix];if(!label)continue;const group=parts[label-1].group,m={x,y,angle,group};if(fits(m,ctx,modules))modules.push(m);} } 
+ if(mode==='fill'){const angle=input.orientation===90?90:0,stepX=angle?width+(input.rowGap??gap):length+gap,stepY=angle?length+gap:width+(input.rowGap??gap);if(stepX<=0||stepY<=0)throw Error('O espaçamento precisa ser positivo.');let candidates=0;for(let y=(angle?length:width)/2;y<input.heightMM;y+=stepY)for(let x=(angle?width:length)/2;x<input.widthMM;x+=stepX){if(++candidates>200000)throw Error('Módulos muito pequenos para o tamanho do letreiro.');const ix=Math.floor(x/sx),iy=Math.floor(y/sy),group=groupMap[iy*w+ix]-1;if(group<0)continue;const m={x,y,angle,group};if(fits(m,ctx,modules))modules.push(m);}}
  for(const g of mode==='fill'?[]:groups){
   const local=[];const add=original=>{let m={...original};m.group=g.group;if(mode==='border'&&!fits(m,ctx,[])){const ix=Math.max(1,Math.min(w-2,Math.floor(m.x/sx))),iy=Math.max(1,Math.min(h-2,Math.floor(m.y/sy))),i=iy*w+ix,gx=(distance[i+1]-distance[i-1])/sx,gy=(distance[i+w]-distance[i-w])/sy,norm=Math.hypot(gx,gy);if(norm){for(let shift=1;shift<=length/3;shift+=Math.max(1,Math.min(sx,sy)/2)){m={...original,x:original.x+gx/norm*shift,y:original.y+gy/norm*shift,group:g.group};if(fits(m,ctx,[]))break;}}}if(fits(m,ctx,modules)){modules.push(m);local.push(m);return true;}return false;};
   const edges=g.edges.sort((a,b)=>b.len-a.len),anchors=new Map;
@@ -121,7 +126,7 @@ function distribute(input){
   if(!local.length&&mode==='central'){const center={x:(g.sumX/g.area+.5)*sx,y:(g.sumY/g.area+.5)*sy,angle:0};if(!add(center))add({...center,angle:90});}
  }
  const summary=Array.from({length:next},(_,id)=>({id,name:'Elemento '+String(id+1).padStart(2,'0'),count:modules.filter(m=>m.group===id).length}));
- return{modules,groups:summary,distance,unplaced:summary.filter(g=>!g.count).length};
+ return{modules,groups:summary,distance,groupMap,unplaced:summary.filter(g=>!g.count).length};
 }
 const api={thin,components,distribute,corners,polygonDistance,fits,distanceField};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LedEngine=api;

@@ -60,7 +60,7 @@ A próxima evolução é salvar os projetos em uma pasta compartilhada do própr
 
 ## Módulo Letreiros LED
 
-A navegação no topo abre `led.html`. Refaça a imagem Docker na atualização: o módulo usa `led.js`, `led-engine.js` e `led-worker.js`, copiados junto ao HTML.
+A navegação no topo abre `led.html`. Refaça a imagem Docker na atualização: o módulo usa `led.js`, `led-svg.js`, `led-engine.js` e `led-worker.js`, copiados junto ao HTML.
 
 1. Exporte o SVG do Corel com textos convertidos em curvas e confira a largura em centímetros.
 2. Escolha módulo ou fita, depois central, borda ou preenchimento.
@@ -70,4 +70,4 @@ A navegação no topo abre `led.html`. Refaça a imagem Docker na atualização:
 
 Para fita, cada trecho reto usa o intervalo de corte informado; o total é exibido em metros e não inclui conectores/emendas. A margem da borda é medida a partir da lateral do LED, incluindo os vazados. Curvas podem exigir maior afastamento para acomodar peças retas. O SVG é sanitizado e processado no navegador; não é enviado a serviços externos.
 
-Validação da geometria, sem dependências: `node tests/led.test.js`.
+Validação sem dependências: `node tests/led.test.js`, `node tests/led-svg.test.js`, `node tests/led-ui.test.js` e `node tests/acm-validation.test.js`.
