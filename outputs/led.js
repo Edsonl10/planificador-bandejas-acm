@@ -11,7 +11,7 @@ function options(){const p=params(),strip=isStrip();$('cutField').classList.togg
 function setSource(text,name){
  if(state.busy){state.worker?.terminate();state.busy=false;}
  const parsed=LedSvg.parse(text);state.source=parsed.node;state.ratio=parsed.ratio;state.modules=[];state.groups=[];state.ctx=null;state.selected=-1;state.dirty=false;
- $('project').value=name.replace(/\.svg$/i,'');$('artWidth').value=(parsed.widthMM/10).toFixed(2);$('generate').disabled=false;$('generate').textContent='Distribuir módulos';options();paint();summary();msg('SVG importado. Confira a largura real e clique em Distribuir módulos.');
+ $('project').value=name.replace(/\.svg$/i,'');$('artWidth').value=(parsed.widthMM/10).toFixed(2);$('generate').disabled=false;$('generate').textContent='Distribuir módulos';options();paint();summary();msg(parsed.outlinesConverted?'SVG importado: contornos fechados foram tratados como áreas. Confira a largura real e clique em Distribuir módulos.':'SVG importado. Confira a largura real e clique em Distribuir módulos.');
 }
 function markDirty(){options();if(state.ctx){state.dirty=true;state.selected=-1;summary();msg('As medidas mudaram. Distribua novamente para atualizar o layout.');}else if(state.source)paint();}
 function lockControls(lock){for(const id of ['file','example','artWidth','length','width','gap','edge','rowGap','cutStep','mode','orientation','ledType','project'])$(id).disabled=lock;}
@@ -55,7 +55,7 @@ async function raster(){
 async function generate(){
  if(!state.source||state.busy)return;if(!validReserve()){msg('Informe uma reserva entre 0 e 100%.',true);summary();return;}state.busy=true;lockControls(true);$('generate').disabled=true;$('generate').textContent='Calculando…';summary();msg('Identificando os traços e distribuindo os módulos…');
  try{
-  const ctx=await raster();state.worker?.terminate();const worker=state.worker=new Worker('led-worker.js?v=20261028-1');
+  const ctx=await raster();state.worker?.terminate();const worker=state.worker=new Worker('led-worker.js?v=20261028-2');
   const result=await new Promise((resolve,reject)=>{worker.onmessage=e=>e.data.error?reject(Error(e.data.error)):resolve(e.data);worker.onerror=()=>reject(Error('Não foi possível calcular. Abra o planificador pelo endereço do NAS.'));worker.postMessage(ctx);});worker.terminate();state.worker=null;
   ctx.distance=result.distance;ctx.groupMap=result.groupMap;state.ctx=ctx;state.modules=result.modules;state.groups=result.groups;state.selected=-1;state.dirty=false;state.busy=false;paint();summary();
   const resultLabel=ctx.type==='strip'?`${number(state.modules.length*ctx.length/1000)} m de fita em ${state.modules.length} trechos`:`${state.modules.length} módulos`;

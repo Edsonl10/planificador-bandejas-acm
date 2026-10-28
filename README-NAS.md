@@ -62,7 +62,7 @@ A próxima evolução é salvar os projetos em uma pasta compartilhada do própr
 
 A navegação no topo abre `led.html`. Refaça a imagem Docker na atualização: o módulo usa `led.js`, `led-svg.js`, `led-engine.js` e `led-worker.js`, copiados junto ao HTML.
 
-1. Exporte o SVG do Corel com textos convertidos em curvas e confira a largura em centímetros.
+1. Exporte o SVG do Corel com textos convertidos em curvas e confira a largura em centímetros. Se todas as formas visíveis forem contornos sem preenchimento, os contornos fechados serão tratados como áreas; confira a prévia e os vazados.
 2. Escolha módulo ou fita, depois central, borda ou preenchimento.
 3. Informe dimensões, vão livre e margem mínima da borda. No preenchimento, ajuste também o vão entre fileiras e a direção.
 4. Distribua e confira. Arraste, gire, exclua ou adicione por duplo clique. Identifique os elementos na tabela.
