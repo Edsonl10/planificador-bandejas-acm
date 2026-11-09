@@ -97,6 +97,7 @@ function svgPanel(p,plan,start){let W=800,H=370,ratio=Math.max(p.w/p.h,.35),dw=M
 function panelPoints(sizes){let points=[0];for(const size of sizes)points.push(points[points.length-1]+size);return points}
 // Cotas do quadro e das emendas são medidas a partir da mesma borda.
 function nearestDistance(value,points){return points.length?Math.min(...points.map(point=>Math.abs(value-point))):0}
+function clearsSeams(position,seams){return seams.every(seam=>Math.abs(position-seam)>=5)}
 function traverseCandidate(len,seams,centers,count){
   let positions=[];
   for(let i=1;i<=count;i++){
@@ -104,7 +105,7 @@ function traverseCandidate(len,seams,centers,count){
     let lower=Math.max(previous+.5,len-remaining*150),upper=Math.min(previous+150,len-remaining*.5);
     for(let half=Math.ceil(lower*2);half<=Math.floor(upper*2);half++){
       let value=half/2;
-      if(seams.some(seam=>Math.abs(value-seam)<5))continue;
+      if(!clearsSeams(value,seams))continue;
       let score=nearestDistance(value,centers)*10+Math.abs(value-ideal)*.1+(half%2?.6:0);
       if(score<best){candidate=value;best=score}
     }
@@ -115,7 +116,8 @@ function traverseCandidate(len,seams,centers,count){
 }
 function safeTraverses(len,seams=[],centers=[]){
   if(!Array.isArray(seams))seams=Array.from({length:Math.max(0,seams-1)},(_,i)=>len*(i+1)/seams);
-  let minimum=Math.max(0,Math.ceil(len/150)-1),maximum=centers.length?Math.min(minimum+1,centers.length):minimum,best=null;
+  if(len<=150)return [];
+  let minimum=Math.ceil(len/150)-1,maximum=Math.min(minimum+1,centers.length),best=null;
   for(let count=minimum;count<=maximum;count++){
     let positions=traverseCandidate(len,seams,centers,count);
     if(!positions)continue;
@@ -124,14 +126,31 @@ function safeTraverses(len,seams=[],centers=[]){
     let candidate={positions,matches,error,count};
     if(!best||candidate.matches>best.matches||(candidate.matches===best.matches&&(candidate.error<best.error-.001||(Math.abs(candidate.error-best.error)<.001&&candidate.count<best.count))))best=candidate;
   }
-  return best?.positions||[];
+  if(best)return best.positions;
+
+  // Se os centros forem insuficientes, distribua as travessas pelo vão do quadro.
+  let balanced=traverseCandidate(len,seams,[],minimum);
+  if(balanced)return balanced;
+
+  // Alcance o ponto permitido mais distante a cada passo para encontrar uma distribuição viável.
+  let positions=[],previous=0;
+  while(len-previous>150){
+    let position=previous+150;
+    while(position>previous&&!clearsSeams(position,seams))position-=.5;
+    if(position===previous)return null;
+    positions.push(position);
+    previous=position;
+  }
+  return traverseCandidate(len,seams,[],positions.length)??positions;
 }
 function metalonCard(p,plan){
   let W=800,H=390,fw=p.w-1,fh=p.h-1,ratio=Math.max(fw/fh,.35),dw=Math.min(660,300*ratio),dh=Math.min(220,dw/ratio),x=(W-dw)/2,y=(H-dh)/2-20;
   let xPoints=panelPoints(plan.widths),yPoints=panelPoints(plan.heights);
   let xSeams=xPoints.slice(1,-1).map(v=>v/p.w*fw),ySeams=yPoints.slice(1,-1).map(v=>v/p.h*fh);
   let xCenters=plan.widths.map((width,i)=>(xPoints[i]+width/2)/p.w*fw).slice(1,-1),yCenters=plan.heights.map((height,i)=>(yPoints[i]+height/2)/p.h*fh).slice(1,-1);
-  let vert=safeTraverses(fw,xSeams,xCenters),horiz=safeTraverses(fh,ySeams,yCenters),vx=[0,...vert,fw],hy=[0,...horiz,fh];
+  let vert=safeTraverses(fw,xSeams,xCenters),horiz=safeTraverses(fh,ySeams,yCenters);
+  if(!vert||!horiz)return '<p class="warning" role="alert">Não foi possível distribuir as travessas com vãos de até 150cm e distância de 5cm das emendas. Revise a paginação.</p>';
+  let vx=[0,...vert,fw],hy=[0,...horiz,fh];
   let vLines=vert.map(v=>`<line x1="${x+v/fw*dw}" y1="${y}" x2="${x+v/fw*dw}" y2="${y+dh}" class="bar"/>`).join('');
   let hLines=horiz.map(v=>`<line x1="${x}" y1="${y+v/fh*dh}" x2="${x+dw}" y2="${y+v/fh*dh}" class="bar"/>`).join('');
   let vDims=vx.slice(1).map((v,i)=>{let x1=x+vx[i]/fw*dw,x2=x+v/fw*dw,yy=y+dh+24;return `<line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" class="quote"/><line x1="${x1}" y1="${yy-5}" x2="${x1}" y2="${yy+5}" class="quote"/><line x1="${x2}" y1="${yy-5}" x2="${x2}" y2="${yy+5}" class="quote"/><text x="${(x1+x2)/2}" y="${yy+15}" text-anchor="middle" class="qtext">${cm(v-vx[i])}</text>`}).join('');
