@@ -10,8 +10,9 @@ Atualizado em 09/11/2026.
 
 ## Travessas do quadro ACM — 09/11
 - O cálculo prioriza os centros das bandejas internas e acrescenta travessas onde necessário. Entre travessas, o espaçamento é de 100 a 150 cm. Vãos de ponta podem ser menores. A folga de 5 cm é medida da lateral do metalon até a emenda, e o ACM é posicionado com recuo de 0,5 cm do quadro em cada borda, sem redimensionar as emendas.
-- Testes locais passaram com bandejas verticais de 955 × 170 cm. A chapa de 1,50 m usa cinco travessas verticais centralizadas, mais duas complementares e uma horizontal. Os vãos verticais são 87, 100, 145, 145, 145, 145, 100 e 87 cm. A chapa de 1,22 m mantém sete travessas verticais e uma horizontal.
-- As duas chapas foram conferidas no navegador do NAS e a imagem foi validada pelo hash do HTML. A versão anterior foi preservada no contêiner de produção em `/tmp/acm-distancias.cnHfCL/index.html`.
+- Travessas verticais já previstas nas bandejas externas passam para o centro dessas bandejas quando a folga de emenda e os espaçamentos permitem. A distribuição interna e a horizontal são calculadas pelas mesmas regras anteriores.
+- Testes locais passaram com bandejas verticais de 955 × 170 cm. A chapa de 1,50 m usa cinco travessas verticais internas, mais duas laterais centralizadas e uma horizontal. Os vãos na largura são 57, 130, 145, 145, 145, 145, 130 e 57 cm. A chapa de 1,22 m mantém as cotas anteriores.
+- O ajuste das travessas laterais ainda precisa ser conferido em produção. O commit anterior (`103cee6`) foi conferido no navegador do NAS e na imagem Docker.
 
 ## Correções preparadas em 28/10
 - Um SVG real com letras formadas por contornos fechados e sem preenchimento revelou uma regressão: o cálculo dizia que o desenho estava vazio. A correção trata contornos fechados com traço como áreas quando não existe nenhuma forma preenchida visível; desenhos mistos mantêm contornos decorativos sem preenchimento. Os arquivos corrigidos estão ativos no contêiner, na fonte do NAS e na imagem construída.
