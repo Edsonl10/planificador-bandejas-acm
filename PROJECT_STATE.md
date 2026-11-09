@@ -1,12 +1,17 @@
 # PROJECT_STATE
 
-Atualizado em 28/10/2026.
+Atualizado em 09/11/2026.
 
 ## Estado atual
 - Produção: planificador ACM/metalon estático em Docker/Nginx no NAS, porta 8088; acesso observado em `http://192.168.1.36:8088/led.html`. Os arquivos corrigidos estão ativos no contêiner em execução. Uma imagem atualizada foi construída a partir da fonte sincronizada e marcada como `planificador-bandejas-acm-planificador-acm:latest` (ID `2eddb647d2e6`), com hashes dos arquivos conferidos; a recriação do contêiner de produção não foi testada.
 - Fonte no NAS: `/share/CACHEDEV1_DATA/docker/planificador-bandejas-acm`. A alteração local anterior do HTML foi preservada no stash `antes-led-20261023`; conteúdo já incorporado à versão no GitHub.
 - Para futuras atualizações: verificar primeiro o estado da cópia no NAS; usar `git pull` e `docker compose up -d --build` nessa pasta, preservando alterações locais. Não reutilizar a imagem antiga de setembro. A cópia no NAS foi sincronizada no commit de código `5f57d123`; esta atualização posterior do estado é apenas documental.
 - GitHub é a fonte de verdade. Ler `AGENTS.md` e este arquivo antes de alterar o projeto.
+
+## Travessas do quadro ACM — 09/11
+- A quantidade de centros das bandejas internas é uma preferência de posicionamento. Se houver menos centros do que travessas necessárias, o cálculo usa o comprimento do quadro, com vãos de até 150 cm e distância mínima de 5 cm das emendas.
+- O teste de regressão de 955 × 170 cm, com bandejas verticais, gera 6 travessas verticais e 1 horizontal na chapa de 1,50 m. Na chapa de 1,22 m, mantém 7 verticais e 1 horizontal. Todos os testes locais passaram.
+- A implantação desta correção no NAS ainda precisa ser confirmada.
 
 ## Correções preparadas em 28/10
 - Um SVG real com letras formadas por contornos fechados e sem preenchimento revelou uma regressão: o cálculo dizia que o desenho estava vazio. A correção trata contornos fechados com traço como áreas quando não existe nenhuma forma preenchida visível; desenhos mistos mantêm contornos decorativos sem preenchimento. Os arquivos corrigidos estão ativos no contêiner, na fonte do NAS e na imagem construída.
