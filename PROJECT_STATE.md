@@ -3,7 +3,7 @@
 Atualizado em 09/11/2026.
 
 ## Estado atual
-- Produção: planificador ACM/metalon estático em Docker/Nginx no NAS, porta 8088. A correção de posicionamento das travessas do commit `103cee6` está ativa em `http://192.168.1.36:8088/`. A imagem `planificador-bandejas-acm-planificador-acm:latest` (ID `279807f57412`) foi construída do mesmo commit e verificada pelo auxiliar `acm-build-travessas-20261109`, que terminou sem porta publicada. O contêiner de produção segue em execução com o HTML atualizado.
+- Produção: planificador ACM/metalon estático em Docker/Nginx no NAS, porta 8088. O ajuste das travessas laterais do commit `bb0dae2` está ativo em `http://192.168.1.36:8088/`. A imagem `planificador-bandejas-acm-planificador-acm:latest` (ID `8fe7664fd50a`) foi construída do mesmo commit e verificada pelo auxiliar `acm-build-travessas-20261109`, que terminou sem porta publicada. O contêiner de produção segue em execução com o HTML atualizado.
 - Fonte no NAS: `/share/CACHEDEV1_DATA/docker/planificador-bandejas-acm`. A alteração local anterior do HTML foi preservada no stash `antes-led-20261023`; conteúdo já incorporado à versão no GitHub.
 - Para futuras atualizações: verificar primeiro o estado da cópia no NAS; usar `git pull` e `docker compose up -d --build` nessa pasta, preservando alterações locais. Não reutilizar a imagem antiga de setembro. A última sincronização confirmada da cópia local no NAS foi no commit `5f57d123`. A imagem de 09/11 foi construída do arquivo compactado do GitHub; sincronizar o checkout antes de reconstruir a partir da pasta local.
 - GitHub é a fonte de verdade. Ler `AGENTS.md` e este arquivo antes de alterar o projeto.
@@ -12,7 +12,7 @@ Atualizado em 09/11/2026.
 - O cálculo prioriza os centros das bandejas internas e acrescenta travessas onde necessário. Entre travessas, o espaçamento é de 100 a 150 cm. Vãos de ponta podem ser menores. A folga de 5 cm é medida da lateral do metalon até a emenda, e o ACM é posicionado com recuo de 0,5 cm do quadro em cada borda, sem redimensionar as emendas.
 - Travessas verticais já previstas nas bandejas externas passam para o centro dessas bandejas quando a folga de emenda e os espaçamentos permitem. A distribuição interna e a horizontal são calculadas pelas mesmas regras anteriores.
 - Testes locais passaram com bandejas verticais de 955 × 170 cm. A chapa de 1,50 m usa cinco travessas verticais internas, mais duas laterais centralizadas e uma horizontal. Os vãos na largura são 57, 130, 145, 145, 145, 145, 130 e 57 cm. A chapa de 1,22 m mantém as cotas anteriores.
-- O ajuste das travessas laterais ainda precisa ser conferido em produção. O commit anterior (`103cee6`) foi conferido no navegador do NAS e na imagem Docker.
+- As duas chapas foram conferidas no navegador do NAS e a imagem foi validada pelo hash do HTML. A versão anterior foi preservada no contêiner de produção em `/tmp/acm-pontas.CkaFmj/index.html`.
 
 ## Correções preparadas em 28/10
 - Um SVG real com letras formadas por contornos fechados e sem preenchimento revelou uma regressão: o cálculo dizia que o desenho estava vazio. A correção trata contornos fechados com traço como áreas quando não existe nenhuma forma preenchida visível; desenhos mistos mantêm contornos decorativos sem preenchimento. Os arquivos corrigidos estão ativos no contêiner, na fonte do NAS e na imagem construída.
