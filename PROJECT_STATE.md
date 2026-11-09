@@ -9,9 +9,9 @@ Atualizado em 09/11/2026.
 - GitHub é a fonte de verdade. Ler `AGENTS.md` e este arquivo antes de alterar o projeto.
 
 ## Travessas do quadro ACM — 09/11
-- A quantidade de centros das bandejas internas é uma preferência de posicionamento. Se houver menos centros do que travessas necessárias, o cálculo usa o comprimento do quadro, com vãos de até 150 cm e distância mínima de 5 cm das emendas.
-- O teste de regressão de 955 × 170 cm, com bandejas verticais, gera 6 travessas verticais e 1 horizontal na chapa de 1,50 m. Na chapa de 1,22 m, mantém 7 verticais e 1 horizontal. Todos os testes locais passaram.
-- Conferido no navegador do NAS com as duas chapas. Na chapa de 1,50 m, o maior vão do quadro de 954 × 169 cm foi de 137 cm. A cópia do HTML anterior ficou em `/tmp/acm-travessas.NkNieJ/index.html` no contêiner de produção.
+- O cálculo prioriza os centros das bandejas internas e acrescenta travessas onde necessário. Entre travessas, o espaçamento é de 100 a 150 cm. Vãos de ponta podem ser menores. A folga de 5 cm é medida da lateral do metalon até a emenda, e o ACM é posicionado com recuo de 0,5 cm do quadro em cada borda, sem redimensionar as emendas.
+- Testes locais passaram com bandejas verticais de 955 × 170 cm. A chapa de 1,50 m usa cinco travessas verticais centralizadas, mais duas complementares e uma horizontal. Os vãos verticais são 87, 100, 145, 145, 145, 145, 100 e 87 cm. A chapa de 1,22 m mantém sete travessas verticais e uma horizontal.
+- A versão anterior (`86f71e6`) foi validada no navegador do NAS e está em produção. A implantação desta atualização de distâncias ainda precisa ser confirmada.
 
 ## Correções preparadas em 28/10
 - Um SVG real com letras formadas por contornos fechados e sem preenchimento revelou uma regressão: o cálculo dizia que o desenho estava vazio. A correção trata contornos fechados com traço como áreas quando não existe nenhuma forma preenchida visível; desenhos mistos mantêm contornos decorativos sem preenchimento. Os arquivos corrigidos estão ativos no contêiner, na fonte do NAS e na imagem construída.

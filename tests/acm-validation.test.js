@@ -25,28 +25,26 @@ elements.sheetMode.value='manual';
 elements.pagination.value='vertical';
 vm.runInContext('Object.assign(pieces[0],{w:955,h:170,qty:1})',context);
 
-for(const {sheet,modules,vertical} of [
-  {sheet:'1500x5000',modules:7,vertical:6},
-  {sheet:'1220x5000',modules:9,vertical:7},
+for(const {sheet,modules,gaps} of [
+  {sheet:'1500x5000',modules:7,gaps:[87,100,145,145,145,145,100,87]},
+  {sheet:'1220x5000',modules:9,gaps:[126,117,117,117,117,117,117,126]},
 ]){
   elements.sheet.value=sheet;
   elements.calculate.onclick();
   assert.match(elements.report.innerHTML,new RegExp(`Dividida em ${modules} módulos`));
   const frame=elements.report.innerHTML.match(/Quadro de metalon = 954x169cm<\/h3><svg[^>]*>(.*?)<\/svg>/s)[1];
   const bars=[...frame.matchAll(/<line x1="([^"]+)" y1="([^"]+)" x2="([^"]+)" y2="([^"]+)" class="bar"/g)];
-  assert.equal(bars.filter(([,x1,,x2])=>x1===x2).length,vertical,sheet);
+  assert.equal(bars.filter(([,x1,,x2])=>x1===x2).length,gaps.length-1,sheet);
   assert.equal(bars.filter(([,,y1,,y2])=>y1===y2).length,1,sheet);
-  assert.match(frame,new RegExp(`Metalon 20 mm · ${vertical+1} travessa\\(s\\)`));
+  const dimensions=[...frame.matchAll(/class="qtext">([^<]+)cm<\/text>/g)].map(([,value])=>Number(value.replace(',','.')));
+  assert.deepEqual(dimensions.slice(0,-2),gaps,sheet);
+  assert.match(frame,/Metalon 20 mm · 8 travessa\(s\)/);
 }
 
-assert.equal(vm.runInContext(`(()=>{
-  const panel=pieces[0],frameWidth=panel.w-1;
-  const {widths}=modulePlan(panel,2.5,2.5,{w:150,h:500});
-  const points=panelPoints(widths);
-  const seams=points.slice(1,-1).map(x=>x/panel.w*frameWidth);
-  const centers=widths.map((width,i)=>(points[i]+width/2)/panel.w*frameWidth).slice(1,-1);
-  const bars=safeTraverses(frameWidth,seams,centers);
-  return largestGap(frameWidth,bars)<=150 && bars.every(bar=>seams.every(seam=>Math.abs(bar-seam)>=5));
-})()`,context),true);
+for(const profile of [2,3]){
+  const [position]=vm.runInContext(`safeTraverses(169,[84.5],[84.5],${profile})`,context);
+  assert.equal(Math.abs(position-84.5)-profile/2,5);
+}
 assert.equal(vm.runInContext('JSON.stringify(safeTraverses(300,[150]))',context),'[100,200]');
-console.log('PASS: ACM distributes both axes with 1.50 m and 1.22 m sheets and avoids seams');
+assert.equal(vm.runInContext('safeTraverses(400,Array.from({length:51},(_,i)=>100+i*4))',context),null);
+console.log('PASS: ACM centers traverses in both sheet sizes and measures seam clearance from the profile edge');
