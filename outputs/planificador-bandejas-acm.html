@@ -101,6 +101,9 @@ function betterTraverseLayout(candidate,current){
   if(candidate.count!==current.count)return candidate.count<current.count;
   return candidate.gapCost<current.gapCost;
 }
+function clearsSeams(position,seams,clearance){
+  return seams.every(seam=>Math.abs(position-seam)>=clearance-1e-8);
+}
 function safeTraverses(len,seams=[],centers=[],profileWidth=2){
   if(len<=150)return [];
   const slotsPerCm=2,maximumGap=150*slotsPerCm,minimumGap=100*slotsPerCm;
@@ -112,7 +115,7 @@ function safeTraverses(len,seams=[],centers=[],profileWidth=2){
   // do quadro podem ser mais curtas para manter o centro das bandejas internas.
   for(let slot=1;slot<end;slot++){
     const position=slot/slotsPerCm;
-    if(seams.some(seam=>Math.abs(position-seam)<clearance-1e-8))continue;
+    if(!clearsSeams(position,seams,clearance))continue;
     const centered=Number(preferred.has(slot));
     let layout=slot<=maximumGap?{centers:centered,count:1,gapCost:slot**2,previous:0}:null;
     for(let previous=Math.max(1,slot-maximumGap);previous<=slot-minimumGap;previous++){
@@ -134,15 +137,32 @@ function safeTraverses(len,seams=[],centers=[],profileWidth=2){
   }
   return positions.reverse();
 }
+function centerOuterTraverses(positions,len,seams,centers,profileWidth){
+  if(positions.length<2||seams.length<2)return;
+  const last=positions.length-1,clearance=5+profileWidth/2;
+  // Reposiciona somente as travessas já previstas nas bandejas externas.
+  for(const index of [0,last]){
+    const left=index===0;
+    const edge=left?0:len,seam=left?seams[0]:seams.at(-1);
+    if(Math.abs(positions[index]-edge)>=Math.abs(seam-edge))continue;
+    const center=Math.round((left?centers[0]:centers.at(-1))*2)/2;
+    const neighbor=positions[left?1:last-1];
+    const spacing=left?neighbor-center:center-neighbor;
+    if(Math.abs(center-edge)<=150&&spacing>=100&&spacing<=150&&clearsSeams(center,seams,clearance)){
+      positions[index]=center;
+    }
+  }
+}
 function metalonCard(p,plan){
   let W=800,H=390,fw=p.w-1,fh=p.h-1,ratio=Math.max(fw/fh,.35),dw=Math.min(660,300*ratio),dh=Math.min(220,dw/ratio),x=(W-dw)/2,y=(H-dh)/2-20;
   let xPoints=panelPoints(plan.widths),yPoints=panelPoints(plan.heights);
   // A face é 0,5 cm maior em cada borda do quadro. O ACM não muda de escala.
   let xSeams=xPoints.slice(1,-1).map(v=>v-.5),ySeams=yPoints.slice(1,-1).map(v=>v-.5);
-  let xCenters=plan.widths.map((width,i)=>xPoints[i]+width/2-.5).slice(1,-1),yCenters=plan.heights.map((height,i)=>yPoints[i]+height/2-.5).slice(1,-1);
+  let xCenters=plan.widths.map((width,i)=>xPoints[i]+width/2-.5),yCenters=plan.heights.map((height,i)=>yPoints[i]+height/2-.5).slice(1,-1);
   const profileWidth=depth()===30?3:2;
-  let vert=safeTraverses(fw,xSeams,xCenters,profileWidth),horiz=safeTraverses(fh,ySeams,yCenters,profileWidth);
+  let vert=safeTraverses(fw,xSeams,xCenters.slice(1,-1),profileWidth),horiz=safeTraverses(fh,ySeams,yCenters,profileWidth);
   if(!vert||!horiz)return '<p class="warning" role="alert">A paginação não permite distribuir as travessas entre 100 e 150 cm, com 5 cm livres das emendas. Revise a paginação.</p>';
+  centerOuterTraverses(vert,fw,xSeams,xCenters,profileWidth);
   let vx=[0,...vert,fw],hy=[0,...horiz,fh];
   let vLines=vert.map(v=>`<line x1="${x+v/fw*dw}" y1="${y}" x2="${x+v/fw*dw}" y2="${y+dh}" class="bar"/>`).join('');
   let hLines=horiz.map(v=>`<line x1="${x}" y1="${y+v/fh*dh}" x2="${x+dw}" y2="${y+v/fh*dh}" class="bar"/>`).join('');

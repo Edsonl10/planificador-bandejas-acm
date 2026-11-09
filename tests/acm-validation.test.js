@@ -26,7 +26,7 @@ elements.pagination.value='vertical';
 vm.runInContext('Object.assign(pieces[0],{w:955,h:170,qty:1})',context);
 
 for(const {sheet,modules,gaps} of [
-  {sheet:'1500x5000',modules:7,gaps:[87,100,145,145,145,145,100,87]},
+  {sheet:'1500x5000',modules:7,gaps:[57,130,145,145,145,145,130,57]},
   {sheet:'1220x5000',modules:9,gaps:[126,117,117,117,117,117,117,126]},
 ]){
   elements.sheet.value=sheet;
@@ -38,6 +38,7 @@ for(const {sheet,modules,gaps} of [
   assert.equal(bars.filter(([,,y1,,y2])=>y1===y2).length,1,sheet);
   const dimensions=[...frame.matchAll(/class="qtext">([^<]+)cm<\/text>/g)].map(([,value])=>Number(value.replace(',','.')));
   assert.deepEqual(dimensions.slice(0,-2),gaps,sheet);
+  assert.deepEqual(dimensions.slice(-2),[84.5,84.5],sheet);
   assert.match(frame,/Metalon 20 mm · 8 travessa\(s\)/);
 }
 
